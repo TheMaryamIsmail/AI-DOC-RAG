@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Document QA & RAG Assistant</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.75);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-glow: #6366f1;
+            --accent-hover: #4f46e5;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+            background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                              radial-gradient(circle at 90% 80%, rgba(14, 165, 233, 0.1) 0%, transparent 40%);
+        }
+        .container { width: 100%; max-width: 900px; display: flex; flex-direction: column; gap: 1.5rem; }
+        header { text-align: center; margin-bottom: 0.5rem; }
+        header h1 { font-size: 2.2rem; background: linear-gradient(to right, #818cf8, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        header p { color: var(--text-muted); font-size: 0.95rem; margin-top: 0.4rem; }
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .card h2 { font-size: 1.25rem; margin-bottom: 1rem; color: #e2e8f0; display: flex; align-items: center; gap: 0.5rem; }
+        .upload-zone {
+            border: 2px dashed rgba(99, 102, 241, 0.4);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-zone:hover { border-color: var(--accent-glow); background: rgba(99, 102, 241, 0.05); }
+        input[type="file"] { display: none; }
+        .btn {
+            background: linear-gradient(135deg, var(--accent-glow), var(--accent-hover));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .form-group { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        label { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
+        input[type="text"], select, textarea {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--accent-glow); }
+        .row { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+        .output-box {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        .chunk-card {
+            background: rgba(30, 41, 59, 0.9);
+            border-left: 4px solid var(--accent-glow);
+            padding: 0.75rem;
+            margin-top: 0.75rem;
+            border-radius: 0.3rem;
+            font-size: 0.85rem;
+        }
+        .chunk-meta { color: #38bdf8; font-weight: bold; margin-bottom: 0.25rem; font-size: 0.8rem; }
+        .loading { display: none; color: var(--accent-glow); font-style: italic; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>AI Knowledge Assistant</h1>
+        <p>RAG Assignment System (Jinja2 & ChromaDB Powered)</p>
+    </header>
+
+    <!-- Document Upload Card -->
+    <div class="card">
+        <h2>📁 Part 2: Document Ingestion</h2>
+        <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+            <p id="uploadText">Click to select or drop PDF, TXT, or Markdown documents here</p>
+            <input type="file" id="fileInput" accept=".pdf,.txt,.md" onchange="uploadDocument()">
+        </div>
+        <div id="uploadStatus" class="loading">Uploading and indexing chunks into ChromaDB...</div>
+    </div>
+
+    <!-- RAG Query & Prompt Engineering Card -->
+    <div class="card">
+        <h2>🤖 Part 1 & 2: Semantic Search & Prompt Engineering</h2>
+        <div class="form-group">
+            <label for="queryInput">Ask a Question about your Documents:</label>
+            <input type="text" id="queryInput" placeholder="e.g., What are the core topics of the assignment?">
+        </div>
+        <div class="row">
+            <div class="form-group">
+                <label for="strategySelect">Prompting Technique (Part 1):</label>
+                <select id="strategySelect">
+                    <option value="role_based">Role-Based Prompting (Recommended)</option>
+                    <option value="zero_shot">Zero-Shot Prompting</option>
+                    <option value="few_shot">Few-Shot Prompting</option>
+                </select>
+            </div>
+            <div class="form-group" style="justify-content: flex-end;">
+                <label>&nbsp;</label>
+                <button class="btn" onclick="askQuestion()">Run QA Query</button>
+            </div>
+        </div>
+        <div id="queryLoading" class="loading">Retrieving semantic chunks & generating response...</div>
+        
+        <div id="queryOutputContainer" style="display:none;">
+            <label style="margin-top: 1rem; display:block;">Generated Answer & Prompt Used:</label>
+            <div id="answerOutput" class="output-box"></div>
+            
+            <label style="margin-top: 1rem; display:block;">Retrieved Chunks & Similarity Scores:</label>
+            <div id="chunksOutput"></div>
+        </div>
+    </div>
+
+    <!-- Prompt Comparison Card -->
+    <div class="card">
+        <h2>⚖️ Part 1 Task: Compare Prompting Techniques</h2>
+        <div class="form-group">
+            <label for="compareInput">Question for 3-Way Comparison:</label>
+            <input type="text" id="compareInput" value="Summarize the core objectives of this assignment.">
+        </div>
+        <button class="btn" onclick="comparePrompts()">Compare All 3 Techniques</button>
+        <div id="compareLoading" class="loading">Executing comparative evaluation...</div>
+        <div id="compareOutput" class="output-box" style="display:none;"></div>
+    </div>
+</div>
+
+<script>
+    async function uploadDocument() {
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput.files.length === 0) return;
+        const file = fileInput.files[0];
+        
+        const formData = new FormData();
+        formData.append("file", file);
+        
+        const statusEl = document.getElementById('uploadStatus');
+        statusEl.style.display = "block";
+        statusEl.innerText = `Uploading ${file.name} & generating embeddings...`;
+        
+        try {
+            const response = await fetch('/api/upload', { method: 'POST', body: formData });
+            const data = await response.json();
+            if (response.ok) {
+                statusEl.innerText = `✅ Successfully indexed "${data.filename}" into ${data.total_chunks_indexed} chunks in ChromaDB!`;
+            } else {
+                statusEl.innerText = `❌ Error: ${data.detail}`;
+            }
+        } catch (err) {
+            statusEl.innerText = `❌ Connection error during upload.`;
+        }
+    }
+
+    async function askQuestion() {
+        const query = document.getElementById('queryInput').value.trim();
+        const strategy = document.getElementById('strategySelect').value;
+        if (!query) return alert("Please enter a question.");
+        
+        const loadingEl = document.getElementById('queryLoading');
+        loadingEl.style.display = "block";
+        document.getElementById('queryOutputContainer').style.display = 'none';
+        
+        try {
+            const response = await fetch('/api/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query, strategy, top_k: 3 })
+            });
+            const data = await response.json();
+            loadingEl.style.display = 'none';
+            
+            if (response.ok) {
+                document.getElementById('queryOutputContainer').style.display = 'block';
+                document.getElementById('answerOutput').innerText = `[Strategy: ${data.strategy.toUpperCase()}]\n\n${data.answer}\n\n--- Prompt Template Used ---\n${data.prompt_used}`;
+                
+                const chunksContainer = document.getElementById('chunksOutput');
+                chunksContainer.innerHTML = '';
+                data.retrieved_chunks.forEach((chunk, idx) => {
+                    chunksContainer.innerHTML += `
+                        <div class="chunk-card">
+                            <div class="chunk-meta">Chunk #${idx + 1} | Source: ${chunk.metadata.source} | Similarity Score: ${chunk.similarity_score} (Distance: ${chunk.distance})</div>
+                            <div>${chunk.text}</div>
+                        </div>
+                    `;
+                });
+            }
+        } catch (err) {
+            loadingEl.style.display = 'none';
+            alert("Error communicating with backend.");
+        }
+    }
+
+    async function comparePrompts() {
+        const query = document.getElementById('compareInput').value.trim();
+        if (!query) return alert("Please enter a comparison question.");
+        
+        const loadingEl = document.getElementById('compareLoading');
+        loadingEl.style.display = "block";
+        const outputEl = document.getElementById('compareOutput');
+        outputEl.style.display = 'none';
+        
+        try {
+            const response = await fetch('/api/compare', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query })
+            });
+            const data = await response.json();
+            loadingEl.style.display = 'none';
+            outputEl.style.display = 'block';
+            
+            let outputText = `=== COMPARISON FOR QUERY: "${data.comparison_query}" ===\n\n`;
+            for (const [tech, res] of Object.entries(data.results)) {
+                outputText += `[ TECHNIQUE: ${tech.toUpperCase()} ]\n${res.answer}\n\n`;
+            }
+            outputText += `=== EVALUATION CONCLUSION ===\n${data.evaluation_summary}`;
+            outputEl.innerText = outputText;
+        } catch (err) {
+            loadingEl.style.display = 'none';
+            alert("Error during comparison.");
+        }
+    }
+</script>
+
+</body>
+</html>
