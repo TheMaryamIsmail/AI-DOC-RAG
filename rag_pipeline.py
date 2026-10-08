@@ -1,7 +1,7 @@
 import os
-from groq import Groq
+from google import genai
 from config import THE_API
-from config import GROQ_API_KEY
+
 from logger import setup_logger
 
 logger = setup_logger("RAGPipeline")
@@ -45,10 +45,10 @@ class RAGPipeline:
         self.prompt_engine = prompt_engine
         
         if not THE_API:
-            logger.warning("API key not found in environment variables!")
-        
-        # FIXED: Removed the invalid keyword argument GROQ_API_KEY=...
-        self.groq_client = Groq(api_key=THE_API)
+            logger.warning("THE_API environment variable not found!")
+            
+        # Initialize the official Google GenAI client
+        self.client = genai.Client(api_key=THE_API)
 
     def run_qa(self, query: str, strategy: str = "role_based", top_k: int = 3) -> dict:
         logger.info(f"Running QA with strategy '{strategy}' for query: '{query}'")
@@ -65,15 +65,15 @@ class RAGPipeline:
             prompt = self.prompt_engine.role_based_prompt(context_text, query)
             
         try:
-            chat_completion = self.groq_client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="llama-3.3-70b-versatile",
-                temperature=0.3,
+            # Generate response using Gemini 3.8 Flash
+            response = self.client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=prompt,
             )
-            answer = chat_completion.choices[0].message.content
+            answer = response.text
         except Exception as e:
-            logger.error(f"Groq API call failed: {str(e)}")
-            answer = f"Error generating response from Groq API: {str(e)}"
+            logger.error(f"Gemini API call failed: {str(e)}")
+            answer = f"Error generating response from Gemini API: {str(e)}"
 
         return {
             "query": query,
