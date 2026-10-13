@@ -34,11 +34,11 @@ cd ai-doc-rag-module
 # On Mac/Linux:
 source .aidoc/bin/activate
 3. Install DependenciesBashpip install -r requirements.txt
-4. Configure Your Environment VariablesCreate a .env file in the root directory of your project and add your Google Gemini API key and configuration settings:Code snippetHOST=127.0.0.1
-PORT=8000
-CHUNK_SIZE=500
-CHUNK_OVERLAP=50
-EMBEDDING_MODEL_NAME=all-MiniLM-L6-v2
-GEMINI_API_KEY=your_actual_gemini_api_key_here
-🚀 Running the ApplicationStart the FastAPI server locally with live-reload enabled:Bashuvicorn main:app --reload
-Once running, you can access:API Documentation (Swagger UI): [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)Alternative Docs (Redoc): [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)🔍 API Endpoints OverviewEndpointMethodDescription/api/uploadPOSTUploads and indexes documents into ChromaDB./api/askPOSTPerforms semantic retrieval and answers user queries using a selected prompting strategy./api/comparePOSTCompares responses across Zero-Shot, Few-Shot, and Role-Based prompting techniques simultaneously.📝 LicenseThis project is open-source and available under the MIT License.
+
+## 🚀 Running the Application
+Start the FastAPI server locally with live-reload enabled:Bashuvicorn main:app --reload
+## 🔍 API Endpoints Overview 
+EndpointMethodDescription/api/uploadPOSTUploads and indexes documents into ChromaDB./api/askPOST
+Performs semantic retrieval and answers user queries using a selected prompting strategy./api/comparePOSTCompares responses across Zero-Shot, Few-Shot, and Role-Based prompting techniques simultaneously.
+## 📝 License
+This project is open-source and available under the MIT License.
